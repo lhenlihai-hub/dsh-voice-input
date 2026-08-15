@@ -9,7 +9,7 @@
 
 它不会翻译，不会回答听写内容，不要求单独填写 API Key，也不会在插件内部执行卸载或删除命令。
 
-> 当前版本：`0.1.0`，按 DeepSeek Harness `0.1.0-rc.6` 的 Host、Client Modules、Slot 与 Typert 接口构建。
+> 当前版本：`0.2.0`，按 DeepSeek Harness `0.1.0-rc.6` 的 Host、Client Modules、Slot 与 Typert 接口构建。
 
 ## 功能
 
@@ -19,6 +19,7 @@
 - 默认快捷键为 `Ctrl+Alt+V`，可改为包含 Ctrl、Alt、⌘/Meta 的组合键，或 `F1–F24`；
 - 可选择自动、普通话、繁体中文、粤语、英语、日语或韩语识别；
 - 每次整理前重新读取当前 Session 的模型选择，通过 Harness 自己的 LLM 路由与凭据调用；
+- 短内容保持自然段，较长内容自动分段，步骤和并列事项可整理成 Markdown 列表；
 - 整理失败时保留原文；整理期间草稿被用户修改时不覆盖用户编辑；
 - 设置只保存在浏览器 `localStorage` 中。
 
@@ -55,7 +56,7 @@ dsh plugin --profile <profile> add ./dsh-voice-input
 
 ```bash
 npm run pack:plugin
-dsh plugin --profile <profile> add ./dsh-voice-input-0.1.0.tgz
+dsh plugin --profile <profile> add ./dsh-voice-input-0.2.0.tgz
 ```
 
 ## 使用
@@ -76,6 +77,10 @@ dsh plugin --profile <profile> add ./dsh-voice-input-0.1.0.tgz
 - 修正明确的识别错误并补标点；
 - 保持原意、人称、语气、语言和句子类型；
 - 不回答、不执行、不解释、不补充、不翻译。
+
+在这些约束之上，`0.2.0` 增加了克制的格式整理：单一短内容不强行加标题；长内容按话题分段；明确的步骤或多个并列事项才转换成 Markdown 列表。用户口述的“标题、换行、下一段、列几点”等格式意图会被落实，但模型不能凭空发明结构或信息。
+
+Host 要求模型返回严格的 `{"text":"..."}` JSON 包装，解析并验证 `text` 后才写回输入框。JSON 只是模型与插件之间的内部协议，用户最终看到的仍然是整理后的正文。返回空内容、畸形 JSON、异常扩写或未知结构时都会保留识别原文。
 
 模型输出为空、调用失败、要求工具调用、达到输出上限或出现不合理扩写时，插件回退到识别原文。
 

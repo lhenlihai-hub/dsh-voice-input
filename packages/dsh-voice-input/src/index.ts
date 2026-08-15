@@ -23,6 +23,7 @@ export {
   CLEANUP_SYSTEM_PROMPT,
   MAX_TRANSCRIPT_CHARS,
   cleanupMaxTokens,
+  extractCleanupText,
   finishFailure,
   normalizeCleanedText,
   textFromBlocks,
@@ -58,7 +59,27 @@ export class VoiceInputService extends TypertRemoteService {
       }),
       createMessage({
         role: 'assistant' as const,
-        content: [{ type: 'text' as const, text: '你觉得这个方案行不行？' }],
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({ text: '你觉得这个方案行不行？' }),
+        }],
+        source: { kind: 'plugin' as const, plugin: 'dsh-voice-input' },
+      }),
+      createUserMessage({
+        content: [{
+          type: 'text' as const,
+          text: '呃我想说三点啊第一先把登录做完第二那个补一下测试然后第三的话就是写发布说明',
+        }],
+        source: { kind: 'user' as const },
+      }),
+      createMessage({
+        role: 'assistant' as const,
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({
+            text: '我想说三点：\n\n1. 先把登录做完。\n2. 补充测试。\n3. 写发布说明。',
+          }),
+        }],
         source: { kind: 'plugin' as const, plugin: 'dsh-voice-input' },
       }),
       createUserMessage({

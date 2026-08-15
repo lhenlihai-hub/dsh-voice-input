@@ -3,7 +3,7 @@ import type { Context } from '@deepseek-ai/cordis';
 import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol';
 import type { CleanupRequest, CleanupResponse } from './types.ts';
 export type { CleanupRequest, CleanupResponse, VoiceModelSelection } from './types.ts';
-export { CLEANUP_SYSTEM_PROMPT, MAX_TRANSCRIPT_CHARS, cleanupMaxTokens, finishFailure, normalizeCleanedText, textFromBlocks, } from './cleanup.ts';
+export { CLEANUP_SYSTEM_PROMPT, MAX_TRANSCRIPT_CHARS, cleanupMaxTokens, extractCleanupText, finishFailure, normalizeCleanedText, textFromBlocks, } from './cleanup.ts';
 declare module '@deepseek-ai/cordis' {
     interface Context {
         voiceInput: VoiceInputService;

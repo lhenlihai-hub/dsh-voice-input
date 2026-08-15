@@ -44,7 +44,7 @@ export const TYPERT = {
         typeSymbol: 'dsh-voice-input/types#CleanupResponse',
         schema: dsh_voice_input_voiceInput_cleanup_result$schema,
       },
-      sourceLocation: {"file":"packages/dsh-voice-input/src/index.ts","line":51,"column":9},
+      sourceLocation: {"file":"packages/dsh-voice-input/src/index.ts","line":52,"column":9},
     },
   ],
   model: {
