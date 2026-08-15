@@ -6,7 +6,12 @@ import {
   hotkeyFromEvent,
   matchesHotkey,
 } from '../lib/types/client/hotkey.js'
-import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../lib/types/client/settings.js'
+import {
+  DEFAULT_SETTINGS,
+  clearSettings,
+  loadSettings,
+  saveSettings,
+} from '../lib/types/client/settings.js'
 
 function key(overrides = {}) {
   return {
@@ -43,9 +48,12 @@ test('settings persistence is validated and fails closed to defaults', () => {
   const storage = {
     getItem: name => values.get(name) ?? null,
     setItem: (name, value) => values.set(name, value),
+    removeItem: name => values.delete(name),
   }
   saveSettings(storage, { hotkey: DEFAULT_HOTKEY, language: 'en-US' })
   assert.equal(loadSettings(storage).language, 'en-US')
+  clearSettings(storage)
+  assert.deepEqual(loadSettings(storage), DEFAULT_SETTINGS)
   values.set('dsh-voice-input.settings.v2', '{"hotkey":{},"language":"bad"}')
   assert.deepEqual(loadSettings(storage), DEFAULT_SETTINGS)
 })

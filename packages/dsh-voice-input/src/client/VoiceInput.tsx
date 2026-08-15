@@ -23,6 +23,7 @@ import {
 import {
   DEFAULT_SETTINGS,
   RECOGNITION_LANGUAGES,
+  clearSettings,
   loadSettings,
   saveSettings,
 } from './settings.ts'
@@ -46,6 +47,7 @@ export interface CleanupOutcome {
 
 export interface VoiceInputInjected {
   readonly cleanupTranscript: (text: string, signal: AbortSignal) => Promise<CleanupOutcome>
+  readonly uninstallPlugin: () => Promise<{ readonly profile: string }>
 }
 
 type VoiceInputProps = PropsRuntime<'conversation.input.left'> & VoiceInputInjected
@@ -90,22 +92,25 @@ interface Copy {
   readonly noSpeech: string
   readonly canceled: string
   readonly blocked: string
-  readonly status: string
-  readonly shortcut: string
+  readonly shortcutBefore: string
+  readonly shortcutAfter: string
+  readonly shortcutOpen: string
+  readonly shortcutClose: string
   readonly language: string
-  readonly method: string
-  readonly browserMethod: string
-  readonly systemMethod: string
   readonly captureShortcut: string
   readonly invalidShortcut: string
   readonly reset: string
-  readonly auto: string
-  readonly privacy: string
+  readonly uninstall: string
+  readonly uninstallConfirm: string
+  readonly uninstalling: string
   readonly close: string
+  readonly languageNames: Readonly<Record<RecognitionLanguage, string>>
   readonly fallback: (gesture: string) => string
   readonly browserFailed: (gesture: string) => string
   readonly rawFallback: (reason: string) => string
   readonly cleaned: (model: string) => string
+  readonly uninstalled: (profile: string) => string
+  readonly uninstallFailed: (reason: string) => string
   readonly concurrentEdit: string
 }
 
@@ -114,28 +119,40 @@ const ZH: Copy = {
   start: '开始语音输入',
   stop: '结束语音输入',
   settings: '语音输入设置',
-  ready: '点击麦克风或按快捷键开始。',
+  ready: '就绪。',
   listening: '正在听写；再次点击或按快捷键结束。',
   cleaning: '正在使用当前会话模型整理文字…',
   noSpeech: '没有识别到语音。',
   canceled: '已取消语音输入。',
   blocked: '当前输入框正忙，暂时不能开始听写。',
-  status: '状态',
-  shortcut: '快捷键',
+  shortcutBefore: '按',
+  shortcutAfter: '开始/停止录音',
+  shortcutOpen: '【',
+  shortcutClose: '】',
   language: '识别语言',
-  method: '输入方式',
-  browserMethod: '浏览器语音识别（不可用时自动回退系统听写）',
-  systemMethod: '系统听写回退',
-  captureShortcut: '请按新的组合键（需 Ctrl、Alt、⌘，或 F1–F24）',
+  captureShortcut: '请按新快捷键',
   invalidShortcut: '不能使用普通字母或数字单键，请加 Ctrl、Alt、⌘，或使用 F 键。',
-  reset: '恢复默认设置',
-  auto: '自动（浏览器语言）',
-  privacy: '音频由浏览器或操作系统听写处理；只有转写文字会通过 Harness 当前会话模型做整理。插件不保存 API 密钥。',
+  reset: '恢复默认',
+  uninstall: '完整卸载插件',
+  uninstallConfirm: '确定完整卸载 dsh-voice-input 吗？卸载后 Harness 会关闭，需要手动重新启动。',
+  uninstalling: '正在卸载插件…',
   close: '关闭',
+  languageNames: {
+    auto: '自动',
+    'zh-CN': '普通话',
+    'zh-TW': '繁體中文',
+    'zh-HK': '粤语',
+    'en-US': 'English (US)',
+    'en-GB': 'English (UK)',
+    'ja-JP': '日本語',
+    'ko-KR': '한국어',
+  },
   fallback: gesture => `系统听写已待命：输入框已聚焦，请按 ${gesture} 开始；停顿约 1.2 秒后自动整理。`,
   browserFailed: gesture => `浏览器语音识别不可用，已回退系统听写。请按 ${gesture} 开始。`,
   rawFallback: reason => `模型整理失败，已保留识别原文：${reason}`,
   cleaned: model => `已用当前会话模型 ${model} 整理并写入。`,
+  uninstalled: profile => `已从 ${profile} 完整卸载。Harness 即将关闭。`,
+  uninstallFailed: reason => `卸载失败：${reason}`,
   concurrentEdit: '整理期间输入内容发生变化；为避免覆盖你的编辑，已保留识别原文。',
 }
 
@@ -144,32 +161,49 @@ const EN: Copy = {
   start: 'Start voice input',
   stop: 'Stop voice input',
   settings: 'Voice input settings',
-  ready: 'Click the microphone or press the shortcut to start.',
+  ready: 'Ready.',
   listening: 'Listening; click or press the shortcut again to stop.',
   cleaning: 'Cleaning the transcript with the current Session model…',
   noSpeech: 'No speech was recognized.',
   canceled: 'Voice input canceled.',
   blocked: 'The composer is busy, so dictation cannot start yet.',
-  status: 'Status',
-  shortcut: 'Shortcut',
+  shortcutBefore: 'Press',
+  shortcutAfter: 'to start/stop recording',
+  shortcutOpen: '[',
+  shortcutClose: ']',
   language: 'Language',
-  method: 'Input method',
-  browserMethod: 'Browser speech recognition (system dictation fallback)',
-  systemMethod: 'System dictation fallback',
-  captureShortcut: 'Press a new shortcut (Ctrl, Alt, Meta, or F1–F24 required)',
+  captureShortcut: 'press new shortcut',
   invalidShortcut: 'Bare letters and digits are not allowed. Add Ctrl, Alt, or Meta, or use an F key.',
-  reset: 'Reset defaults',
-  auto: 'Automatic (browser language)',
-  privacy: 'Audio is handled by browser or OS dictation. Only transcript text is cleaned through the current Harness Session model. No API key is stored.',
+  reset: 'Reset',
+  uninstall: 'Uninstall plugin',
+  uninstallConfirm: 'Fully uninstall dsh-voice-input? Harness will close and must be restarted manually.',
+  uninstalling: 'Uninstalling plugin…',
   close: 'Close',
+  languageNames: {
+    auto: 'Auto',
+    'zh-CN': 'Mandarin Chinese',
+    'zh-TW': 'Traditional Chinese',
+    'zh-HK': 'Cantonese',
+    'en-US': 'English (US)',
+    'en-GB': 'English (UK)',
+    'ja-JP': 'Japanese',
+    'ko-KR': 'Korean',
+  },
   fallback: gesture => `System dictation is armed. The composer is focused; press ${gesture} to begin. Cleanup starts after about 1.2 seconds of quiet.`,
   browserFailed: gesture => `Browser speech recognition is unavailable. Falling back to system dictation; press ${gesture} to begin.`,
   rawFallback: reason => `Model cleanup failed; the raw transcript was kept: ${reason}`,
   cleaned: model => `Cleaned and inserted with the current Session model ${model}.`,
+  uninstalled: profile => `Removed completely from ${profile}. Harness will now close.`,
+  uninstallFailed: reason => `Uninstall failed: ${reason}`,
   concurrentEdit: 'The draft changed during cleanup. The raw transcript was kept to avoid overwriting your edit.',
 }
 
-export function VoiceInput({ input, inputActions, cleanupTranscript }: VoiceInputProps) {
+export function VoiceInput({
+  input,
+  inputActions,
+  cleanupTranscript,
+  uninstallPlugin,
+}: VoiceInputProps) {
   const copy = useMemo(() => browserLanguage().startsWith('zh') ? ZH : EN, [])
   const mac = useMemo(() => platformKind() === 'mac', [])
   const gesture = useMemo(() => systemDictationGesture(), [])
@@ -179,6 +213,7 @@ export function VoiceInput({ input, inputActions, cleanupTranscript }: VoiceInpu
   const [interim, setInterim] = useState('')
   const [panelOpen, setPanelOpen] = useState(false)
   const [capturingHotkey, setCapturingHotkey] = useState(false)
+  const [uninstalling, setUninstalling] = useState(false)
   const capturingHotkeyRef = useRef(false)
   const [settings, setSettingsState] = useState<VoiceInputSettings>(() =>
     loadSettings(typeof window === 'undefined' ? undefined : window.localStorage))
@@ -471,7 +506,7 @@ export function VoiceInput({ input, inputActions, cleanupTranscript }: VoiceInpu
     const anchor = settingsButtonRef.current
     if (anchor === null) return
     const rect = anchor.getBoundingClientRect()
-    const width = Math.min(340, window.innerWidth - 16)
+    const width = Math.min(300, window.innerWidth - 16)
     const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))
     if (rect.top > 360) {
       setPanelStyle({ left, bottom: window.innerHeight - rect.top + 8 })
@@ -546,10 +581,24 @@ export function VoiceInput({ input, inputActions, cleanupTranscript }: VoiceInpu
     setMessage(copy.ready)
   }, [commitSettings, copy])
 
-  const blocked = phase === 'cleaning' || (phase === 'idle' && input.phase !== 'plain')
+  const uninstall = useCallback(async () => {
+    if (uninstalling || !window.confirm(copy.uninstallConfirm)) return
+    setUninstalling(true)
+    setCapturingHotkey(false)
+    setMessage(copy.uninstalling)
+    try {
+      const result = await uninstallPlugin()
+      clearSettings(window.localStorage)
+      setMessage(copy.uninstalled(result.profile))
+    } catch (error) {
+      setUninstalling(false)
+      setMessage(copy.uninstallFailed(describeError(error)))
+    }
+  }, [copy, uninstallPlugin, uninstalling])
+
+  const blocked = uninstalling || phase === 'cleaning' || (phase === 'idle' && input.phase !== 'plain')
   const active = phase === 'listening' || phase === 'armed' || phase === 'capturing'
   const shortcutLabel = formatHotkey(settings.hotkey, mac)
-  const method = speechRecognitionConstructor() === null ? copy.systemMethod : copy.browserMethod
 
   return <>
     <span className="dsh-voice">
@@ -587,36 +636,51 @@ export function VoiceInput({ input, inputActions, cleanupTranscript }: VoiceInpu
             onClick={() => { setPanelOpen(false); setCapturingHotkey(false) }}
           >×</button>
         </div>
-        <p className="dsh-voice-panel__status" aria-live="polite">
-          {message}
-          {interim.length > 0 && <span className="dsh-voice-panel__preview">{interim}</span>}
-        </p>
-        <div className="dsh-voice-panel__row">
-          <span className="dsh-voice-panel__label">{copy.method}</span>
-          <span>{method}</span>
-        </div>
-        <div className="dsh-voice-panel__row">
-          <span className="dsh-voice-panel__label">{copy.shortcut}</span>
+        <p className="dsh-voice-panel__instruction">
+          {copy.shortcutBefore}{' '}
           <button
             ref={shortcutButtonRef}
             type="button"
-            className={`dsh-voice-panel__control${capturingHotkey ? ' dsh-voice-panel__control--capture' : ''}`}
+            className={`dsh-voice-panel__shortcut${capturingHotkey ? ' dsh-voice-panel__shortcut--capture' : ''}`}
+            disabled={uninstalling}
+            aria-label={copy.captureShortcut}
             onClick={() => { setCapturingHotkey(true) }}
             onKeyDown={onShortcutKey}
           >
-            {capturingHotkey ? copy.captureShortcut : shortcutLabel}
+            {copy.shortcutOpen}{capturingHotkey ? copy.captureShortcut : shortcutLabel}{copy.shortcutClose}
           </button>
-        </div>
+          {' '}{copy.shortcutAfter}
+        </p>
         <label className="dsh-voice-panel__row">
           <span className="dsh-voice-panel__label">{copy.language}</span>
-          <select className="dsh-voice-panel__control" value={settings.language} onChange={onLanguage}>
+          <select
+            className="dsh-voice-panel__control"
+            value={settings.language}
+            disabled={uninstalling}
+            onChange={onLanguage}
+          >
             {RECOGNITION_LANGUAGES.map(language =>
-              <option key={language} value={language}>{language === 'auto' ? copy.auto : language}</option>)}
+              <option key={language} value={language}>{copy.languageNames[language]}</option>)}
           </select>
         </label>
-        <p className="dsh-voice-panel__meta">{copy.privacy}</p>
+        {(message !== copy.ready || interim.length > 0) &&
+          <p className="dsh-voice-panel__status" aria-live="polite">
+            {message}
+            {interim.length > 0 && <span className="dsh-voice-panel__preview">{interim}</span>}
+          </p>}
         <div className="dsh-voice-panel__actions">
-          <button type="button" className="dsh-voice-panel__reset" onClick={resetSettings}>{copy.reset}</button>
+          <button
+            type="button"
+            className="dsh-voice-panel__uninstall"
+            disabled={uninstalling}
+            onClick={() => { void uninstall() }}
+          >{copy.uninstall}</button>
+          <button
+            type="button"
+            className="dsh-voice-panel__reset"
+            disabled={uninstalling}
+            onClick={resetSettings}
+          >{copy.reset}</button>
         </div>
       </div>,
       document.body,

@@ -5,7 +5,12 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
-import type { CleanupRequest, CleanupResponse } from 'dsh-voice-input/types'
+import type {
+  CleanupRequest,
+  CleanupResponse,
+  UninstallRequest,
+  UninstallResponse,
+} from 'dsh-voice-input/types'
 import VOICE_INPUT_REMOTE from 'dsh-voice-input/remote'
 import { VoiceInput } from './VoiceInput.tsx'
 import type { CleanupOutcome, VoiceInputInjected } from './VoiceInput.tsx'
@@ -27,6 +32,7 @@ export {
 
 interface VoiceInputRemote {
   cleanup(request: CleanupRequest, signal?: AbortSignal): Promise<RemoteResult<CleanupResponse>>
+  uninstall(request: UninstallRequest): Promise<RemoteResult<UninstallResponse>>
 }
 
 type ContextWithVoiceRemote = ClientContext & {
@@ -58,6 +64,7 @@ export async function apply(ctx: ClientContext): Promise<() => Promise<void>> {
     label: 'Voice input',
     inject: (sessionId): VoiceInputInjected => ({
       cleanupTranscript: (text, signal) => cleanupForSession(ctx, sessionId, text, signal),
+      uninstallPlugin: () => uninstallPlugin(ctx),
     }),
   }, VoiceInput))
 
@@ -66,6 +73,14 @@ export async function apply(ctx: ClientContext): Promise<() => Promise<void>> {
     disposeStyles()
     await disposeRemote()
   }
+}
+
+async function uninstallPlugin(ctx: ClientContext): Promise<{ readonly profile: string }> {
+  const remote = (ctx as ContextWithVoiceRemote).remote.voiceInput
+  if (remote === undefined) throw new Error('voice-input uninstall Remote is unavailable')
+  const result = await remote.uninstall({ confirmation: 'remove dsh-voice-input' })
+  if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
+  return Object.freeze({ profile: result.value.profile })
 }
 
 async function cleanupForSession(

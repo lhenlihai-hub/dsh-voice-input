@@ -22,6 +22,7 @@ export interface VoiceInputSettings {
 interface StorageLike {
   getItem(key: string): string | null
   setItem(key: string, value: string): void
+  removeItem(key: string): void
 }
 
 const STORAGE_KEY = 'dsh-voice-input.settings.v2'
@@ -51,6 +52,15 @@ export function saveSettings(storage: StorageLike | undefined, settings: VoiceIn
   } catch {
     // Storage can be unavailable in private/locked browser contexts. The live
     // setting still works for this page lifetime.
+  }
+}
+
+export function clearSettings(storage: StorageLike | undefined): void {
+  if (storage === undefined) return
+  try {
+    storage.removeItem(STORAGE_KEY)
+  } catch {
+    // Uninstall still succeeds when browser storage is unavailable.
   }
 }
 

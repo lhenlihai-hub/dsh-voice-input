@@ -13,6 +13,14 @@ const dsh_voice_input_voiceInput_cleanup_result$schema = z.object({
   'text': z.string().readonly(),
   'changed': z.boolean().readonly(),
 })
+const dsh_voice_input_voiceInput_uninstall_parameter_0$schema = z.object({
+  'confirmation': z.literal("remove dsh-voice-input").readonly(),
+})
+const dsh_voice_input_voiceInput_uninstall_result$schema = z.object({
+  'removed': z.literal(true).readonly(),
+  'profile': z.string().readonly(),
+  'restartRequired': z.literal(true).readonly(),
+})
 
 export const TYPERT_REMOTE = {
   package: 'dsh-voice-input',
@@ -41,7 +49,32 @@ export const TYPERT_REMOTE = {
         typeSymbol: 'dsh-voice-input/types#CleanupResponse',
         schema: dsh_voice_input_voiceInput_cleanup_result$schema,
       },
-      sourceLocation: {"file":"packages/dsh-voice-input/src/index.ts","line":52,"column":9},
+      sourceLocation: {"file":"packages/dsh-voice-input/src/index.ts","line":74,"column":9},
+    },
+    {
+      id: 'dsh-voice-input#voiceInput/uninstall',
+      service: 'voiceInput',
+      namespace: 'voiceInput',
+      method: 'uninstall',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'dsh-voice-input/types#UninstallRequest',
+            schema: dsh_voice_input_voiceInput_uninstall_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: 'dsh-voice-input/types#UninstallResponse',
+        schema: dsh_voice_input_voiceInput_uninstall_result$schema,
+      },
+      sourceLocation: {"file":"packages/dsh-voice-input/src/index.ts","line":151,"column":9},
     },
   ],
 }

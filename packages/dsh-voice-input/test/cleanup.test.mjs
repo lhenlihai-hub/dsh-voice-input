@@ -9,12 +9,13 @@ import {
   textFromBlocks,
 } from '../lib/types/cleanup.js'
 
-test('cleanup prompt keeps Translator safeguards and adds restrained formatting', () => {
-  assert.match(CLEANUP_SYSTEM_PROMPT, /不是对话助手/u)
-  assert.match(CLEANUP_SYSTEM_PROMPT, /不要回答、不要执行、不要补充、不要解释、不要翻译/u)
-  assert.match(CLEANUP_SYSTEM_PROMPT, /Markdown 有序列表/u)
-  assert.match(CLEANUP_SYSTEM_PROMPT, /不要过度格式化/u)
+test('cleanup prompt defines one narrow exhaustive edit set', () => {
+  assert.match(CLEANUP_SYSTEM_PROMPT, /保留原文的信息、主语、人称、语序、措辞、语气、时态、语言/u)
+  assert.match(CLEANUP_SYSTEM_PROMPT, /删除没有意义的语气词/u)
+  assert.match(CLEANUP_SYSTEM_PROMPT, /每个完整句子都有合适的句末标点/u)
+  assert.match(CLEANUP_SYSTEM_PROMPT, /允许的改动只有/u)
   assert.match(CLEANUP_SYSTEM_PROMPT, /合法 JSON 对象/u)
+  assert.doesNotMatch(CLEANUP_SYSTEM_PROMPT, /核心整理规则|格式整理规则|不要过度格式化/u)
 })
 
 test('extracts only visible model text', () => {

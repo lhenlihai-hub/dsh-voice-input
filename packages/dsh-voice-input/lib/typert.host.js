@@ -13,6 +13,14 @@ const dsh_voice_input_voiceInput_cleanup_result$schema = z.object({
   'text': z.string().readonly(),
   'changed': z.boolean().readonly(),
 })
+const dsh_voice_input_voiceInput_uninstall_parameter_0$schema = z.object({
+  'confirmation': z.literal("remove dsh-voice-input").readonly(),
+})
+const dsh_voice_input_voiceInput_uninstall_result$schema = z.object({
+  'removed': z.literal(true).readonly(),
+  'profile': z.string().readonly(),
+  'restartRequired': z.literal(true).readonly(),
+})
 
 export const TYPERT = {
   package: 'dsh-voice-input',
@@ -44,7 +52,32 @@ export const TYPERT = {
         typeSymbol: 'dsh-voice-input/types#CleanupResponse',
         schema: dsh_voice_input_voiceInput_cleanup_result$schema,
       },
-      sourceLocation: {"file":"packages/dsh-voice-input/src/index.ts","line":52,"column":9},
+      sourceLocation: {"file":"packages/dsh-voice-input/src/index.ts","line":74,"column":9},
+    },
+    {
+      id: 'dsh-voice-input#voiceInput/uninstall',
+      service: 'voiceInput',
+      namespace: 'voiceInput',
+      method: 'uninstall',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'request',
+          wire: 'request',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: 'dsh-voice-input/types#UninstallRequest',
+            schema: dsh_voice_input_voiceInput_uninstall_parameter_0$schema,
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: 'dsh-voice-input/types#UninstallResponse',
+        schema: dsh_voice_input_voiceInput_uninstall_result$schema,
+      },
+      sourceLocation: {"file":"packages/dsh-voice-input/src/index.ts","line":151,"column":9},
     },
   ],
   model: {
@@ -63,6 +96,13 @@ export const TYPERT = {
             "signature": "@Remote('cleanup') async cleanup(request: CleanupRequest, signal: AbortSignal): Promise<CleanupResponse>",
             "summary": "Clean one transcript with the model selected by the addressed browser Session.",
             "jsDoc": "/**\n * Clean one transcript with the model selected by the addressed browser\n * Session. The Client resolves the selection immediately before this call;\n * the Host supplies credentials and routing through the normal Harness LLM.\n */"
+          },
+          {
+            "kind": "method",
+            "name": "uninstall",
+            "signature": "@Remote('uninstall') async uninstall(request: UninstallRequest): Promise<UninstallResponse>",
+            "summary": "Remove this exact package through official DSH plugin management.",
+            "jsDoc": "/** Remove this exact package through official DSH plugin management. */"
           }
         ],
         "types": [
@@ -73,6 +113,14 @@ export const TYPERT = {
           {
             "name": "CleanupResponse",
             "declaration": "export interface CleanupResponse {\n    readonly text: string;\n    readonly changed: boolean;\n}"
+          },
+          {
+            "name": "UninstallRequest",
+            "declaration": "export interface UninstallRequest {\n    readonly confirmation: 'remove dsh-voice-input';\n}"
+          },
+          {
+            "name": "UninstallResponse",
+            "declaration": "export interface UninstallResponse {\n    readonly removed: true;\n    readonly profile: string;\n    readonly restartRequired: true;\n}"
           },
           {
             "name": "VoiceModelSelection",

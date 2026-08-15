@@ -17,6 +17,7 @@
     "src/index.ts",
     "src/types.ts",
     "src/cleanup.ts",
+    "src/uninstall.ts",
     "src/typert-protocol-meta.d.ts"
   ]
 }

@@ -1452,7 +1452,7 @@ window.__ModuleLoader__.load({
             })));
           }
         }
-
+        
         if (${id}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
@@ -1460,7 +1460,7 @@ window.__ModuleLoader__.load({
         } else {
           newResult[${k}] = ${id}.value;
         }
-
+        
       `);
 					else if (!isOptionalIn) doc.write(`
         const ${id}_present = ${k} in input;
@@ -1495,7 +1495,7 @@ window.__ModuleLoader__.load({
             path: iss.path ? [${k}, ...iss.path] : [${k}]
           })));
         }
-
+        
         if (${id}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
@@ -1503,7 +1503,7 @@ window.__ModuleLoader__.load({
         } else {
           newResult[${k}] = ${id}.value;
         }
-
+        
       `);
 				}
 				doc.write(`payload.value = newResult;`);
@@ -1704,6 +1704,24 @@ window.__ModuleLoader__.load({
 				payload.issues.push({
 					code: "invalid_value",
 					values,
+					input,
+					inst
+				});
+				return payload;
+			};
+		});
+		const $ZodLiteral = /*@__PURE__*/ $constructor("$ZodLiteral", (inst, def) => {
+			$ZodType.init(inst, def);
+			if (def.values.length === 0) throw new Error("Cannot create literal schema with no valid values");
+			const values = new Set(def.values);
+			inst._zod.values = values;
+			inst._zod.pattern = new RegExp(`^(${def.values.map((o) => typeof o === "string" ? escapeRegex(o) : o ? escapeRegex(o.toString()) : String(o)).join("|")})$`);
+			inst._zod.parse = (payload, _ctx) => {
+				const input = payload.value;
+				if (values.has(input)) return payload;
+				payload.issues.push({
+					code: "invalid_value",
+					values: def.values,
 					input,
 					inst
 				});
@@ -2766,6 +2784,28 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			if (values.every((v) => typeof v === "string")) json.type = "string";
 			json.enum = values;
 		};
+		const literalProcessor = (schema, ctx, json, _params) => {
+			const def = schema._zod.def;
+			const vals = [];
+			for (const val of def.values) if (val === void 0) {
+				if (ctx.unrepresentable === "throw") throw new Error("Literal `undefined` cannot be represented in JSON Schema");
+			} else if (typeof val === "bigint") {
+				if (ctx.unrepresentable === "throw") throw new Error("BigInt literals cannot be represented in JSON Schema");
+				else vals.push(Number(val));
+			} else vals.push(val);
+			if (vals.length === 0) {} else if (vals.length === 1) {
+				const val = vals[0];
+				json.type = val === null ? "null" : typeof val;
+				if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") json.enum = [val];
+				else json.const = val;
+			} else {
+				if (vals.every((v) => typeof v === "number")) json.type = "number";
+				if (vals.every((v) => typeof v === "string")) json.type = "string";
+				if (vals.every((v) => typeof v === "boolean")) json.type = "boolean";
+				if (vals.every((v) => v === null)) json.type = "null";
+				json.enum = vals;
+			}
+		};
 		const customProcessor = (_schema, ctx, _json, _params) => {
 			if (ctx.unrepresentable === "throw") throw new Error("Custom types cannot be represented in JSON Schema");
 		};
@@ -3501,6 +3541,23 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				...normalizeParams(params)
 			});
 		}
+		const ZodLiteral = /*@__PURE__*/ $constructor("ZodLiteral", (inst, def) => {
+			$ZodLiteral.init(inst, def);
+			ZodType.init(inst, def);
+			inst._zod.processJSONSchema = (ctx, json, params) => literalProcessor(inst, ctx, json, params);
+			inst.values = new Set(def.values);
+			Object.defineProperty(inst, "value", { get() {
+				if (def.values.length > 1) throw new Error("This schema contains multiple valid literal values. Use `.values` instead.");
+				return def.values[0];
+			} });
+		});
+		function literal(value, params) {
+			return new ZodLiteral({
+				type: "literal",
+				values: Array.isArray(value) ? value : [value],
+				...normalizeParams(params)
+			});
+		}
 		const ZodTransform = /*@__PURE__*/ $constructor("ZodTransform", (inst, def) => {
 			$ZodTransform.init(inst, def);
 			ZodType.init(inst, def);
@@ -3680,6 +3737,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"text": string().readonly(),
 			"changed": boolean().readonly()
 		});
+		const dsh_voice_input_voiceInput_uninstall_parameter_0$schema = object({ "confirmation": literal("remove dsh-voice-input").readonly() });
+		const dsh_voice_input_voiceInput_uninstall_result$schema = object({
+			"removed": literal(true).readonly(),
+			"profile": string().readonly(),
+			"restartRequired": literal(true).readonly()
+		});
 		const TYPERT_REMOTE = {
 			package: "dsh-voice-input",
 			descriptors: [{
@@ -3706,7 +3769,33 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				},
 				sourceLocation: {
 					"file": "packages/dsh-voice-input/src/index.ts",
-					"line": 52,
+					"line": 74,
+					"column": 9
+				}
+			}, {
+				id: "dsh-voice-input#voiceInput/uninstall",
+				service: "voiceInput",
+				namespace: "voiceInput",
+				method: "uninstall",
+				invocation: { kind: "direct" },
+				parameters: [{
+					name: "request",
+					wire: "request",
+					source: "json",
+					codec: {
+						mode: "strict",
+						typeSymbol: "dsh-voice-input/types#UninstallRequest",
+						schema: dsh_voice_input_voiceInput_uninstall_parameter_0$schema
+					}
+				}],
+				result: {
+					mode: "strict",
+					typeSymbol: "dsh-voice-input/types#UninstallResponse",
+					schema: dsh_voice_input_voiceInput_uninstall_result$schema
+				},
+				sourceLocation: {
+					"file": "packages/dsh-voice-input/src/index.ts",
+					"line": 151,
 					"column": 9
 				}
 			}]
@@ -3811,6 +3900,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				storage.setItem(STORAGE_KEY, JSON.stringify(settings));
 			} catch {}
 		}
+		function clearSettings(storage) {
+			if (storage === void 0) return;
+			try {
+				storage.removeItem(STORAGE_KEY);
+			} catch {}
+		}
 		function isLanguage(value) {
 			return typeof value === "string" && RECOGNITION_LANGUAGES.includes(value);
 		}
@@ -3908,28 +4003,40 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			start: "开始语音输入",
 			stop: "结束语音输入",
 			settings: "语音输入设置",
-			ready: "点击麦克风或按快捷键开始。",
+			ready: "就绪。",
 			listening: "正在听写；再次点击或按快捷键结束。",
 			cleaning: "正在使用当前会话模型整理文字…",
 			noSpeech: "没有识别到语音。",
 			canceled: "已取消语音输入。",
 			blocked: "当前输入框正忙，暂时不能开始听写。",
-			status: "状态",
-			shortcut: "快捷键",
+			shortcutBefore: "按",
+			shortcutAfter: "开始/停止录音",
+			shortcutOpen: "【",
+			shortcutClose: "】",
 			language: "识别语言",
-			method: "输入方式",
-			browserMethod: "浏览器语音识别（不可用时自动回退系统听写）",
-			systemMethod: "系统听写回退",
-			captureShortcut: "请按新的组合键（需 Ctrl、Alt、⌘，或 F1–F24）",
+			captureShortcut: "请按新快捷键",
 			invalidShortcut: "不能使用普通字母或数字单键，请加 Ctrl、Alt、⌘，或使用 F 键。",
-			reset: "恢复默认设置",
-			auto: "自动（浏览器语言）",
-			privacy: "音频由浏览器或操作系统听写处理；只有转写文字会通过 Harness 当前会话模型做整理。插件不保存 API 密钥。",
+			reset: "恢复默认",
+			uninstall: "完整卸载插件",
+			uninstallConfirm: "确定完整卸载 dsh-voice-input 吗？卸载后 Harness 会关闭，需要手动重新启动。",
+			uninstalling: "正在卸载插件…",
 			close: "关闭",
+			languageNames: {
+				auto: "自动",
+				"zh-CN": "普通话",
+				"zh-TW": "繁體中文",
+				"zh-HK": "粤语",
+				"en-US": "English (US)",
+				"en-GB": "English (UK)",
+				"ja-JP": "日本語",
+				"ko-KR": "한국어"
+			},
 			fallback: (gesture) => `系统听写已待命：输入框已聚焦，请按 ${gesture} 开始；停顿约 1.2 秒后自动整理。`,
 			browserFailed: (gesture) => `浏览器语音识别不可用，已回退系统听写。请按 ${gesture} 开始。`,
 			rawFallback: (reason) => `模型整理失败，已保留识别原文：${reason}`,
 			cleaned: (model) => `已用当前会话模型 ${model} 整理并写入。`,
+			uninstalled: (profile) => `已从 ${profile} 完整卸载。Harness 即将关闭。`,
+			uninstallFailed: (reason) => `卸载失败：${reason}`,
 			concurrentEdit: "整理期间输入内容发生变化；为避免覆盖你的编辑，已保留识别原文。"
 		};
 		const EN = {
@@ -3937,31 +4044,43 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			start: "Start voice input",
 			stop: "Stop voice input",
 			settings: "Voice input settings",
-			ready: "Click the microphone or press the shortcut to start.",
+			ready: "Ready.",
 			listening: "Listening; click or press the shortcut again to stop.",
 			cleaning: "Cleaning the transcript with the current Session model…",
 			noSpeech: "No speech was recognized.",
 			canceled: "Voice input canceled.",
 			blocked: "The composer is busy, so dictation cannot start yet.",
-			status: "Status",
-			shortcut: "Shortcut",
+			shortcutBefore: "Press",
+			shortcutAfter: "to start/stop recording",
+			shortcutOpen: "[",
+			shortcutClose: "]",
 			language: "Language",
-			method: "Input method",
-			browserMethod: "Browser speech recognition (system dictation fallback)",
-			systemMethod: "System dictation fallback",
-			captureShortcut: "Press a new shortcut (Ctrl, Alt, Meta, or F1–F24 required)",
+			captureShortcut: "press new shortcut",
 			invalidShortcut: "Bare letters and digits are not allowed. Add Ctrl, Alt, or Meta, or use an F key.",
-			reset: "Reset defaults",
-			auto: "Automatic (browser language)",
-			privacy: "Audio is handled by browser or OS dictation. Only transcript text is cleaned through the current Harness Session model. No API key is stored.",
+			reset: "Reset",
+			uninstall: "Uninstall plugin",
+			uninstallConfirm: "Fully uninstall dsh-voice-input? Harness will close and must be restarted manually.",
+			uninstalling: "Uninstalling plugin…",
 			close: "Close",
+			languageNames: {
+				auto: "Auto",
+				"zh-CN": "Mandarin Chinese",
+				"zh-TW": "Traditional Chinese",
+				"zh-HK": "Cantonese",
+				"en-US": "English (US)",
+				"en-GB": "English (UK)",
+				"ja-JP": "Japanese",
+				"ko-KR": "Korean"
+			},
 			fallback: (gesture) => `System dictation is armed. The composer is focused; press ${gesture} to begin. Cleanup starts after about 1.2 seconds of quiet.`,
 			browserFailed: (gesture) => `Browser speech recognition is unavailable. Falling back to system dictation; press ${gesture} to begin.`,
 			rawFallback: (reason) => `Model cleanup failed; the raw transcript was kept: ${reason}`,
 			cleaned: (model) => `Cleaned and inserted with the current Session model ${model}.`,
+			uninstalled: (profile) => `Removed completely from ${profile}. Harness will now close.`,
+			uninstallFailed: (reason) => `Uninstall failed: ${reason}`,
 			concurrentEdit: "The draft changed during cleanup. The raw transcript was kept to avoid overwriting your edit."
 		};
-		function VoiceInput({ input, inputActions, cleanupTranscript }) {
+		function VoiceInput({ input, inputActions, cleanupTranscript, uninstallPlugin }) {
 			const copy = (0, react.useMemo)(() => browserLanguage().startsWith("zh") ? ZH : EN, []);
 			const mac = (0, react.useMemo)(() => platformKind() === "mac", []);
 			const gesture = (0, react.useMemo)(() => systemDictationGesture(), []);
@@ -3971,6 +4090,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const [interim, setInterim] = (0, react.useState)("");
 			const [panelOpen, setPanelOpen] = (0, react.useState)(false);
 			const [capturingHotkey, setCapturingHotkey] = (0, react.useState)(false);
+			const [uninstalling, setUninstalling] = (0, react.useState)(false);
 			const capturingHotkeyRef = (0, react.useRef)(false);
 			const [settings, setSettingsState] = (0, react.useState)(() => loadSettings(typeof window === "undefined" ? void 0 : window.localStorage));
 			const [panelStyle, setPanelStyle] = (0, react.useState)({
@@ -4280,7 +4400,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const anchor = settingsButtonRef.current;
 				if (anchor === null) return;
 				const rect = anchor.getBoundingClientRect();
-				const width = Math.min(340, window.innerWidth - 16);
+				const width = Math.min(300, window.innerWidth - 16);
 				const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
 				if (rect.top > 360) setPanelStyle({
 					left,
@@ -4368,10 +4488,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				setCapturingHotkey(false);
 				setMessage(copy.ready);
 			}, [commitSettings, copy]);
-			const blocked = phase === "cleaning" || phase === "idle" && input.phase !== "plain";
+			const uninstall = (0, react.useCallback)(async () => {
+				if (uninstalling || !window.confirm(copy.uninstallConfirm)) return;
+				setUninstalling(true);
+				setCapturingHotkey(false);
+				setMessage(copy.uninstalling);
+				try {
+					const result = await uninstallPlugin();
+					clearSettings(window.localStorage);
+					setMessage(copy.uninstalled(result.profile));
+				} catch (error) {
+					setUninstalling(false);
+					setMessage(copy.uninstallFailed(describeError(error)));
+				}
+			}, [
+				copy,
+				uninstallPlugin,
+				uninstalling
+			]);
+			const blocked = uninstalling || phase === "cleaning" || phase === "idle" && input.phase !== "plain";
 			const active = phase === "listening" || phase === "armed" || phase === "capturing";
 			const shortcutLabel = formatHotkey(settings.hotkey, mac);
-			const method = speechRecognitionConstructor() === null ? copy.systemMethod : copy.browserMethod;
 			return (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsxs)("span", {
 				className: "dsh-voice",
 				children: [(0, react_jsx_runtime.jsx)("button", {
@@ -4420,35 +4557,29 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						})]
 					}),
 					(0, react_jsx_runtime.jsxs)("p", {
-						className: "dsh-voice-panel__status",
-						"aria-live": "polite",
-						children: [message, interim.length > 0 && (0, react_jsx_runtime.jsx)("span", {
-							className: "dsh-voice-panel__preview",
-							children: interim
-						})]
-					}),
-					(0, react_jsx_runtime.jsxs)("div", {
-						className: "dsh-voice-panel__row",
-						children: [(0, react_jsx_runtime.jsx)("span", {
-							className: "dsh-voice-panel__label",
-							children: copy.method
-						}), (0, react_jsx_runtime.jsx)("span", { children: method })]
-					}),
-					(0, react_jsx_runtime.jsxs)("div", {
-						className: "dsh-voice-panel__row",
-						children: [(0, react_jsx_runtime.jsx)("span", {
-							className: "dsh-voice-panel__label",
-							children: copy.shortcut
-						}), (0, react_jsx_runtime.jsx)("button", {
-							ref: shortcutButtonRef,
-							type: "button",
-							className: `dsh-voice-panel__control${capturingHotkey ? " dsh-voice-panel__control--capture" : ""}`,
-							onClick: () => {
-								setCapturingHotkey(true);
-							},
-							onKeyDown: onShortcutKey,
-							children: capturingHotkey ? copy.captureShortcut : shortcutLabel
-						})]
+						className: "dsh-voice-panel__instruction",
+						children: [
+							copy.shortcutBefore,
+							" ",
+							(0, react_jsx_runtime.jsxs)("button", {
+								ref: shortcutButtonRef,
+								type: "button",
+								className: `dsh-voice-panel__shortcut${capturingHotkey ? " dsh-voice-panel__shortcut--capture" : ""}`,
+								disabled: uninstalling,
+								"aria-label": copy.captureShortcut,
+								onClick: () => {
+									setCapturingHotkey(true);
+								},
+								onKeyDown: onShortcutKey,
+								children: [
+									copy.shortcutOpen,
+									capturingHotkey ? copy.captureShortcut : shortcutLabel,
+									copy.shortcutClose
+								]
+							}),
+							" ",
+							copy.shortcutAfter
+						]
 					}),
 					(0, react_jsx_runtime.jsxs)("label", {
 						className: "dsh-voice-panel__row",
@@ -4458,25 +4589,39 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						}), (0, react_jsx_runtime.jsx)("select", {
 							className: "dsh-voice-panel__control",
 							value: settings.language,
+							disabled: uninstalling,
 							onChange: onLanguage,
 							children: RECOGNITION_LANGUAGES.map((language) => (0, react_jsx_runtime.jsx)("option", {
 								value: language,
-								children: language === "auto" ? copy.auto : language
+								children: copy.languageNames[language]
 							}, language))
 						})]
 					}),
-					(0, react_jsx_runtime.jsx)("p", {
-						className: "dsh-voice-panel__meta",
-						children: copy.privacy
+					(message !== copy.ready || interim.length > 0) && (0, react_jsx_runtime.jsxs)("p", {
+						className: "dsh-voice-panel__status",
+						"aria-live": "polite",
+						children: [message, interim.length > 0 && (0, react_jsx_runtime.jsx)("span", {
+							className: "dsh-voice-panel__preview",
+							children: interim
+						})]
 					}),
-					(0, react_jsx_runtime.jsx)("div", {
+					(0, react_jsx_runtime.jsxs)("div", {
 						className: "dsh-voice-panel__actions",
-						children: (0, react_jsx_runtime.jsx)("button", {
+						children: [(0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							className: "dsh-voice-panel__uninstall",
+							disabled: uninstalling,
+							onClick: () => {
+								uninstall();
+							},
+							children: copy.uninstall
+						}), (0, react_jsx_runtime.jsx)("button", {
 							type: "button",
 							className: "dsh-voice-panel__reset",
+							disabled: uninstalling,
 							onClick: resetSettings,
 							children: copy.reset
-						})
+						})]
 					})
 				]
 			}), document.body)] });
@@ -4559,21 +4704,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 .dsh-voice__button--active { color: #ef4444; opacity: 1; animation: dsh-voice-pulse 1.2s ease-in-out infinite; }
 .dsh-voice__settings { width: 24px; }
 .dsh-voice svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.dsh-voice-panel { position: fixed; z-index: 10000; width: min(340px, calc(100vw - 16px)); box-sizing: border-box; padding: 14px; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 12px; background: var(--background, var(--color-background, #fff)); color: var(--foreground, var(--color-foreground, #171717)); box-shadow: 0 16px 44px rgba(0,0,0,.22); font: 13px/1.45 system-ui, sans-serif; }
+.dsh-voice-panel { position: fixed; z-index: 10000; width: min(300px, calc(100vw - 16px)); box-sizing: border-box; padding: 13px; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 12px; background: var(--background, var(--color-background, #fff)); color: var(--foreground, var(--color-foreground, #171717)); box-shadow: 0 16px 44px rgba(0,0,0,.22); font: 13px/1.45 system-ui, sans-serif; }
 @media (prefers-color-scheme: dark) { .dsh-voice-panel { background: var(--background, var(--color-background, #191919)); color: var(--foreground, var(--color-foreground, #f2f2f2)); } }
 .dsh-voice-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .dsh-voice-panel__title { margin: 0; font-size: 14px; font-weight: 650; }
 .dsh-voice-panel__close { appearance: none; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; line-height: 1; opacity: .65; }
-.dsh-voice-panel__status { margin: 0 0 12px; padding: 9px 10px; border-radius: 8px; background: color-mix(in srgb, currentColor 7%, transparent); overflow-wrap: anywhere; }
+.dsh-voice-panel__instruction { display: flex; flex-wrap: wrap; align-items: center; margin: 0 0 12px; font-size: 14px; }
+.dsh-voice-panel__shortcut { appearance: none; border: 0; background: transparent; color: #3975e9; padding: 2px 3px; border-radius: 5px; cursor: pointer; font: 650 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dsh-voice-panel__shortcut:hover { background: color-mix(in srgb, #3975e9 12%, transparent); }
+.dsh-voice-panel__shortcut:disabled { cursor: not-allowed; opacity: .5; }
+.dsh-voice-panel__shortcut--capture { outline: 2px solid #4f8cff; }
+.dsh-voice-panel__status { margin: 10px 0 0; padding: 7px 8px; border-radius: 7px; background: color-mix(in srgb, currentColor 7%, transparent); overflow-wrap: anywhere; font-size: 12px; }
 .dsh-voice-panel__preview { display: block; margin-top: 5px; opacity: .72; }
-.dsh-voice-panel__row { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 10px; margin-top: 10px; }
+.dsh-voice-panel__row { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 9px; }
 .dsh-voice-panel__label { opacity: .7; }
 .dsh-voice-panel__control { min-width: 0; box-sizing: border-box; width: 100%; min-height: 32px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 8px; background: color-mix(in srgb, currentColor 4%, transparent); color: inherit; padding: 5px 9px; font: inherit; }
-button.dsh-voice-panel__control { cursor: pointer; text-align: left; }
-.dsh-voice-panel__control--capture { outline: 2px solid #4f8cff; }
-.dsh-voice-panel__meta { margin: 12px 0 0; opacity: .62; font-size: 12px; }
-.dsh-voice-panel__actions { display: flex; justify-content: flex-end; margin-top: 10px; }
-.dsh-voice-panel__reset { appearance: none; border: 0; background: transparent; color: inherit; padding: 3px 0; cursor: pointer; opacity: .7; font: inherit; }
+.dsh-voice-panel__control:disabled { cursor: not-allowed; opacity: .5; }
+.dsh-voice-panel__actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+.dsh-voice-panel__reset, .dsh-voice-panel__uninstall { appearance: none; border: 0; background: transparent; padding: 3px 0; cursor: pointer; font: inherit; }
+.dsh-voice-panel__reset { color: inherit; opacity: .68; }
+.dsh-voice-panel__uninstall { color: #dc2626; }
+.dsh-voice-panel__reset:disabled, .dsh-voice-panel__uninstall:disabled { cursor: not-allowed; opacity: .42; }
 @keyframes dsh-voice-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(.88); } }
 @media (prefers-reduced-motion: reduce) { .dsh-voice__button--active { animation: none; } }
 `;
@@ -4616,13 +4767,23 @@ button.dsh-voice-panel__control { cursor: pointer; text-align: left; }
 				id: "voice-input",
 				order: 40,
 				label: "Voice input",
-				inject: (sessionId) => ({ cleanupTranscript: (text, signal) => cleanupForSession(ctx, sessionId, text, signal) })
+				inject: (sessionId) => ({
+					cleanupTranscript: (text, signal) => cleanupForSession(ctx, sessionId, text, signal),
+					uninstallPlugin: () => uninstallPlugin(ctx)
+				})
 			}, VoiceInput));
 			return async () => {
 				disposeSlot();
 				disposeStyles();
 				await disposeRemote();
 			};
+		}
+		async function uninstallPlugin(ctx) {
+			const remote = ctx.remote.voiceInput;
+			if (remote === void 0) throw new Error("voice-input uninstall Remote is unavailable");
+			const result = await remote.uninstall({ confirmation: "remove dsh-voice-input" });
+			if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`);
+			return Object.freeze({ profile: result.value.profile });
 		}
 		async function cleanupForSession(ctx, sessionId, text, signal) {
 			const selection = (await ctx.modelDirectories.directoryFor(sessionId).load()).current;

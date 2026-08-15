@@ -1,6 +1,6 @@
 {
   "name": "dsh-voice-input",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Voice dictation and transcript cleanup for DeepSeek Harness, using the current session model.",
   "license": "MIT",
   "repository": {

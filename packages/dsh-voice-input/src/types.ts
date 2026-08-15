@@ -16,3 +16,15 @@ export interface CleanupResponse {
   readonly text: string
   readonly changed: boolean
 }
+
+/** Explicit confirmation required by the destructive uninstall Remote. */
+export interface UninstallRequest {
+  readonly confirmation: 'remove dsh-voice-input'
+}
+
+/** A successful removal requires the current Harness process to restart. */
+export interface UninstallResponse {
+  readonly removed: true
+  readonly profile: string
+  readonly restartRequired: true
+}

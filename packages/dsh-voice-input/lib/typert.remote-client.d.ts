@@ -3,14 +3,16 @@ import type {
   RemoteResult,
   TypertRemoteContribution,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { CleanupRequest, CleanupResponse } from 'dsh-voice-input/types'
+import type { CleanupRequest, CleanupResponse, UninstallRequest, UninstallResponse } from 'dsh-voice-input/types'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$766f696365496e707574 {
     cleanup: (request: CleanupRequest, signal?: AbortSignal) => Promise<RemoteResult<CleanupResponse>>
+    uninstall: (request: UninstallRequest) => Promise<RemoteResult<UninstallResponse>>
   }
   interface TypertRemoteMap {
     'voiceInput/cleanup': (request: CleanupRequest, signal?: AbortSignal) => Promise<RemoteResult<CleanupResponse>>
+    'voiceInput/uninstall': (request: UninstallRequest) => Promise<RemoteResult<UninstallResponse>>
   }
   interface TypertRemoteNamespaceMap {
     'voiceInput': TypertRemoteNamespace$766f696365496e707574

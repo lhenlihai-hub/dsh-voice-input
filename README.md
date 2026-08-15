@@ -1,47 +1,49 @@
 # dsh-voice-input
 
-面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的开源语音输入插件：把语音转成文字，再调用**当前会话已经选择的模型**做最小幅度整理，最后写回 Harness 输入框。
+[English](./README.md) | [简体中文](./README.zh-CN.md)
 
-它只做两件事：
+An open-source voice input plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It transcribes speech, makes a narrowly constrained cleanup pass with the model already selected in the current Harness Session, and inserts the result into the composer.
 
-1. 语音输入；
-2. 删除口头语、明显重复和识别错误，并补充标点。
+It does two things:
 
-它不会翻译，不会回答听写内容，不要求单独填写 API Key，也不会在插件内部执行卸载或删除命令。
+1. voice dictation;
+2. removal of meaningless filler, speech-error repetition, and explicit self-corrections, plus reliable punctuation and sentence breaks.
 
-> 当前版本：`0.2.0`，按 DeepSeek Harness `0.1.0-rc.6` 的 Host、Client Modules、Slot 与 Typert 接口构建。
+It does not translate or answer dictated content. It has no API-key setting because model routing and credentials remain entirely within Harness.
 
-## 功能
+> Current version: `0.3.0`, built against the DeepSeek Harness `0.1.0-rc.6` Host, Client Modules, Slot, and Typert interfaces.
 
-- 在官方 `conversation.input.left` 插槽中添加麦克风和设置按钮；
-- 优先使用浏览器的 `SpeechRecognition / webkitSpeechRecognition`；
-- 浏览器不支持或麦克风不可用时，自动回退到系统听写：macOS 使用 `Fn×2`，Windows 使用 `Win+H`；
-- 默认快捷键为 `Ctrl+Alt+V`，可改为包含 Ctrl、Alt、⌘/Meta 的组合键，或 `F1–F24`；
-- 可选择自动、普通话、繁体中文、粤语、英语、日语或韩语识别；
-- 每次整理前重新读取当前 Session 的模型选择，通过 Harness 自己的 LLM 路由与凭据调用；
-- 短内容保持自然段，较长内容自动分段，步骤和并列事项可整理成 Markdown 列表；
-- 整理失败时保留原文；整理期间草稿被用户修改时不覆盖用户编辑；
-- 设置只保存在浏览器 `localStorage` 中。
+## Features
 
-浏览器插件无法注册操作系统级全局快捷键，所以自定义快捷键只在 Harness 页面处于焦点时生效。
+- Adds microphone and settings controls to the official `conversation.input.left` slot.
+- Uses `SpeechRecognition` / `webkitSpeechRecognition` where available.
+- Falls back to OS dictation when browser recognition is unavailable: `Fn×2` on macOS or `Win+H` on Windows.
+- Uses `Ctrl+Alt+V` by default and supports custom modified shortcuts or `F1–F24`.
+- Supports automatic language detection plus Mandarin, Traditional Chinese, Cantonese, English, Japanese, and Korean recognition modes.
+- Reads the selected model immediately before every cleanup call and uses Harness routing and credentials.
+- Keeps raw text if cleanup fails and avoids overwriting edits made during cleanup.
+- Provides Chinese or English UI automatically from the browser language.
+- Provides a confirmed, one-click uninstall from the current profile.
 
-## 安装
+Browser plugins cannot register OS-wide global shortcuts. The custom shortcut works while the Harness page has focus.
 
-先移除曾经安装过的错误版本（如果当前 profile 中没有它，这条命令只需跳过）：
+## Install
+
+Remove any older or broken build first if it is still present:
 
 ```bash
 dsh plugin --profile <profile> remove dsh-voice-input
 ```
 
-直接从 GitHub 安装：
+Install the latest GitHub version:
 
 ```bash
 dsh plugin --profile <profile> add github:lhenlihai-hub/dsh-voice-input
 ```
 
-随后完全退出并重新启动该 profile 的 Harness。`<profile>` 替换成你实际使用的 profile 名称。
+Then fully quit and restart that Harness profile. Replace `<profile>` with the profile you use, commonly `web`.
 
-也可以从本地源码安装：
+For local development:
 
 ```bash
 git clone https://github.com/lhenlihai-hub/dsh-voice-input.git
@@ -52,62 +54,77 @@ cd ..
 dsh plugin --profile <profile> add ./dsh-voice-input
 ```
 
-或者生成 tarball：
+To install a tarball:
 
 ```bash
 npm run pack:plugin
-dsh plugin --profile <profile> add ./dsh-voice-input-0.2.0.tgz
+dsh plugin --profile <profile> add ./dsh-voice-input-0.3.0.tgz
 ```
 
-## 使用
+## Use
 
-1. 点击输入框工具栏中的麦克风，或按默认快捷键 `Ctrl+Alt+V`；
-2. 说话；再次点击或再次按快捷键结束；
-3. 插件用当前会话模型整理转写文字并写回输入框；
-4. 点击麦克风旁的设置按钮可修改快捷键和识别语言。
+1. Click the microphone or press `Ctrl+Alt+V`.
+2. Speak, then click or press the shortcut again to stop.
+3. The current Session model cleans the transcript and the plugin inserts it into the composer.
+4. Open the adjacent settings button to change the shortcut or recognition language.
 
-如果进入“系统听写回退”状态，输入框会自动获得焦点。按系统听写快捷键开始，说完后停顿约 1.2 秒，插件会自动识别这次新增的文字并整理。
+In OS-dictation fallback mode, the composer is focused automatically. Start the OS dictation shortcut and speak; cleanup begins after about 1.2 seconds without a draft change.
 
-## 整理原则
+## Cleanup contract
 
-整理提示词来自“翻译官”项目已经成熟的听写校对逻辑，核心约束是：
+Version `0.3.0` replaces the previous prompt instead of layering exceptions onto it. The model receives one exhaustive set of allowed edits:
 
-- 只做最小幅度整理；
-- 删除“嗯、呃、那个、就是”等口头语和明显重复；
-- 修正明确的识别错误并补标点；
-- 保持原意、人称、语气、语言和句子类型；
-- 不回答、不执行、不解释、不补充、不翻译。
+- preserve information, subject, person, word order, wording, tone, tense, language, and mixed-language text;
+- remove meaningless filler, speech-error repetition, and content explicitly replaced by a self-correction;
+- correct only recognition errors that are unambiguous from context;
+- add sentence punctuation and break separate ideas into sentences or paragraphs;
+- use Markdown only when the speaker clearly dictates a list, steps, or a heading.
 
-在这些约束之上，`0.2.0` 增加了克制的格式整理：单一短内容不强行加标题；长内容按话题分段；明确的步骤或多个并列事项才转换成 Markdown 列表。用户口述的“标题、换行、下一段、列几点”等格式意图会被落实，但模型不能凭空发明结构或信息。
+For example:
 
-Host 要求模型返回严格的 `{"text":"..."}` JSON 包装，解析并验证 `text` 后才写回输入框。JSON 只是模型与插件之间的内部协议，用户最终看到的仍然是整理后的正文。返回空内容、畸形 JSON、异常扩写或未知结构时都会保留识别原文。
+```text
+Input:  我们现在对软件进行重新的review
+Output: 我们现在对软件进行重新的review。
+```
 
-模型输出为空、调用失败、要求工具调用、达到输出上限或出现不合理扩写时，插件回退到识别原文。
+The Host requests a strict `{"text":"..."}` JSON envelope. Only its validated `text` field reaches the composer. Empty, malformed, excessively expanded, failed, or tool-call output falls back to the recognized source text.
 
-## 隐私与模型
+This behavior is independently implemented. It follows public dictation-product principles such as removing filler, repetition, and explicit self-corrections; it is not affiliated with Typeless.
 
-- 音频由浏览器语音识别或操作系统听写处理，插件不会把原始音频上传给 Harness 模型；
-- 只有转写后的文字会送到当前会话模型整理；
-- 模型提供方、模型 ID 与 reasoning effort 都来自当前 Session；
-- 凭据仍由 Harness 的适配器和凭据系统管理，本插件没有 API Key 配置项。
+## Privacy and model use
 
-浏览器语音识别是否把音频发送给浏览器厂商，取决于具体浏览器实现和其隐私政策。若对此敏感，请使用系统听写回退。
+- Audio is processed by the browser recognition implementation or OS dictation, not by the Harness model.
+- Only recognized text is sent to the current Session model for cleanup.
+- Provider, model ID, reasoning effort, routing, and credentials remain managed by Harness.
+- Plugin settings are stored only in browser `localStorage`.
 
-## 官方插件结构
+Whether browser recognition sends audio to its vendor depends on that browser's implementation and privacy policy. Use OS dictation fallback if that matters for your environment.
 
-本项目同时包含 Host 与浏览器 Client 两部分：
+## Safe uninstall
 
-- Host：`VoiceInputService` 注入官方 `llm` 服务；
-- RPC：使用官方 `@deepseek-ai/dsh-typert-generator` 生成严格的 Host/Client 描述；
-- Client：使用官方同款 `window.__ModuleLoader__.load(...)` bundle 包装；
-- UI：通过 Slot API 注册到 `conversation.input.left`；
-- 安装：通过 `dsh.bundle.patch` 把 Host 插件行加入 profile。
+Choose **Uninstall plugin** in settings and confirm. The Host calls the official fixed command for the current profile, clears this plugin's browser settings, returns success to the page, and then requests a graceful Harness exit. Restart Harness afterward; the plugin is no longer part of that profile.
 
-源码包位于 `packages/dsh-voice-input`。仓库根 `package.json` 是 GitHub 安装入口，同时也是构建工作区。
+The button removes the installed profile dependency and bundle registration. It does not delete a separate source checkout you cloned for development or purge pnpm's shared content-addressed cache.
 
-## 开发与验证
+Manual fallback:
 
-环境要求：Node.js 22 或更新版本。
+```bash
+dsh plugin --profile <profile> remove dsh-voice-input
+```
+
+## Official plugin structure
+
+- Host: `VoiceInputService` injects the official `llm` and `appExit` services.
+- RPC: strict Host/Client descriptors are generated by `@deepseek-ai/dsh-typert-generator`.
+- Client: the browser bundle uses the official `window.__ModuleLoader__.load(...)` wrapper.
+- UI: controls are registered through the official `conversation.input.left` Slot.
+- Installation: `dsh.bundle.patch` adds the Host row to the selected profile.
+
+The source package lives in `packages/dsh-voice-input`; the root package is the GitHub installation and build entry point.
+
+## Development
+
+Node.js 22 or newer is required.
 
 ```bash
 npm install
@@ -115,15 +132,7 @@ npm test
 npm pack --dry-run
 ```
 
-`npm test` 会完成：Host 类型检查、Typert 协议生成、Client 类型检查、官方格式 bundle、纯逻辑测试、严格 RPC schema 测试以及 client module factory 加载测试。
-
-## 卸载
-
-```bash
-dsh plugin --profile <profile> remove dsh-voice-input
-```
-
-重启 Harness 即可。插件不会自行修改 profile 或删除自己的目录。
+The test command builds both plugin halves, generates the Typert protocol, checks strict schemas and fixed uninstall arguments, loads the Client factory, and verifies distributable artifacts.
 
 ## License
 

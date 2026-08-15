@@ -16,9 +16,24 @@ import {
   normalizeCleanedText,
   textFromBlocks,
 } from './cleanup.ts'
-import type { CleanupRequest, CleanupResponse } from './types.ts'
+import {
+  UNINSTALL_CONFIRMATION,
+  uninstallCurrentPlugin,
+} from './uninstall.ts'
+import type {
+  CleanupRequest,
+  CleanupResponse,
+  UninstallRequest,
+  UninstallResponse,
+} from './types.ts'
 
-export type { CleanupRequest, CleanupResponse, VoiceModelSelection } from './types.ts'
+export type {
+  CleanupRequest,
+  CleanupResponse,
+  UninstallRequest,
+  UninstallResponse,
+  VoiceModelSelection,
+} from './types.ts'
 export {
   CLEANUP_SYSTEM_PROMPT,
   MAX_TRANSCRIPT_CHARS,
@@ -28,16 +43,23 @@ export {
   normalizeCleanedText,
   textFromBlocks,
 } from './cleanup.ts'
+export {
+  PLUGIN_PACKAGE,
+  UNINSTALL_CONFIRMATION,
+  resolveProfileName,
+  uninstallCurrentPlugin,
+} from './uninstall.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
     voiceInput: VoiceInputService
+    appExit?: (code: number) => void
   }
 }
 
 /** Host service exposed to the browser through a generated Typert Remote. */
 export class VoiceInputService extends TypertRemoteService {
-  static inject = ['llm']
+  static inject = ['llm', 'appExit']
 
   constructor(ctx: Context) {
     super(ctx, 'voiceInput')
@@ -68,7 +90,22 @@ export class VoiceInputService extends TypertRemoteService {
       createUserMessage({
         content: [{
           type: 'text' as const,
-          text: '呃我想说三点啊第一先把登录做完第二那个补一下测试然后第三的话就是写发布说明',
+          text: '我们现在对软件进行重新的review',
+        }],
+        source: { kind: 'user' as const },
+      }),
+      createMessage({
+        role: 'assistant' as const,
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({ text: '我们现在对软件进行重新的review。' }),
+        }],
+        source: { kind: 'plugin' as const, plugin: 'dsh-voice-input' },
+      }),
+      createUserMessage({
+        content: [{
+          type: 'text' as const,
+          text: '今天先检查登录流程明天再看支付模块如果测试不过我们就先不发布',
         }],
         source: { kind: 'user' as const },
       }),
@@ -77,7 +114,7 @@ export class VoiceInputService extends TypertRemoteService {
         content: [{
           type: 'text' as const,
           text: JSON.stringify({
-            text: '我想说三点：\n\n1. 先把登录做完。\n2. 补充测试。\n3. 写发布说明。',
+            text: '今天先检查登录流程。明天再看支付模块。如果测试不过，我们就先不发布。',
           }),
         }],
         source: { kind: 'plugin' as const, plugin: 'dsh-voice-input' },
@@ -96,7 +133,7 @@ export class VoiceInputService extends TypertRemoteService {
         : { reasoningEffort: request.model.reasoningEffort as ReasoningEffortId }),
       system: CLEANUP_SYSTEM_PROMPT,
       messages,
-      temperature: 0.2,
+      temperature: 0,
       maxTokens: cleanupMaxTokens(source),
       signal,
     })) {
@@ -107,6 +144,25 @@ export class VoiceInputService extends TypertRemoteService {
     if (failure !== null) throw new Error(`voice-input cleanup failed: ${failure}`)
     const cleaned = normalizeCleanedText(source, textFromBlocks(assembler.blocks()))
     return Object.freeze({ text: cleaned, changed: cleaned !== source })
+  }
+
+  /** Remove this exact package through official DSH plugin management. */
+  @Remote('uninstall')
+  async uninstall(request: UninstallRequest): Promise<UninstallResponse> {
+    if (request.confirmation !== UNINSTALL_CONFIRMATION) {
+      throw new TypeError('voice-input: uninstall confirmation is invalid')
+    }
+    const appExit = this.ctx.appExit
+    if (typeof appExit !== 'function') {
+      throw new Error('voice-input: Harness cannot exit safely; use the documented CLI uninstall command')
+    }
+
+    const profile = uninstallCurrentPlugin({
+      execPath: process.execPath,
+      argv: process.argv,
+    })
+    setTimeout(() => { appExit(0) }, 750)
+    return Object.freeze({ removed: true, profile, restartRequired: true })
   }
 }
 
