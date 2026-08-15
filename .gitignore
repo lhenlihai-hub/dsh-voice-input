@@ -1,0 +1,8 @@
+node_modules/
+packages/dsh-voice-input/lib/tsconfig.*.tsbuildinfo
+packages/dsh-voice-input/lib/types/**/*.js
+packages/dsh-voice-input/lib/types/**/*.js.map
+!packages/dsh-voice-input/lib/types/types.js
+*.tgz
+.DS_Store
+coverage/

@@ -1,0 +1,131 @@
+{
+  "name": "dsh-voice-input",
+  "version": "0.1.0",
+  "description": "Voice dictation and transcript cleanup for DeepSeek Harness, using the current session model.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lhenlihai-hub/dsh-voice-input.git"
+  },
+  "homepage": "https://github.com/lhenlihai-hub/dsh-voice-input#readme",
+  "bugs": {
+    "url": "https://github.com/lhenlihai-hub/dsh-voice-input/issues"
+  },
+  "type": "module",
+  "main": "packages/dsh-voice-input/lib/index.js",
+  "types": "packages/dsh-voice-input/lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./packages/dsh-voice-input/lib/types/index.d.ts",
+      "default": "./packages/dsh-voice-input/lib/index.js"
+    },
+    "./types": {
+      "types": "./packages/dsh-voice-input/lib/types/types.d.ts",
+      "default": "./packages/dsh-voice-input/lib/types/types.js"
+    },
+    "./client": {
+      "types": "./packages/dsh-voice-input/lib/types/client/index.d.ts",
+      "default": "./packages/dsh-voice-input/lib/client.js"
+    },
+    "./typert": {
+      "types": "./packages/dsh-voice-input/lib/typert.host.d.ts",
+      "default": "./packages/dsh-voice-input/lib/typert.host.js"
+    },
+    "./remote": {
+      "types": "./packages/dsh-voice-input/lib/typert.remote-client.d.ts",
+      "default": "./packages/dsh-voice-input/lib/typert.remote-client.js"
+    },
+    "./cordis.patch.yml": "./packages/dsh-voice-input/cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "packages/dsh-voice-input/lib/index.js",
+    "packages/dsh-voice-input/lib/client.js",
+    "packages/dsh-voice-input/lib/client.js.map",
+    "packages/dsh-voice-input/lib/types/types.js",
+    "packages/dsh-voice-input/lib/types/**/*.d.ts",
+    "packages/dsh-voice-input/lib/types/**/*.d.ts.map",
+    "packages/dsh-voice-input/lib/typert.host.js",
+    "packages/dsh-voice-input/lib/typert.host.d.ts",
+    "packages/dsh-voice-input/lib/typert.remote-client.js",
+    "packages/dsh-voice-input/lib/typert.remote-client.d.ts",
+    "packages/dsh-voice-input/lib/typert.remote-client.d.ts.map",
+    "packages/dsh-voice-input/cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./packages/dsh-voice-input/cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-model-selection"
+      ],
+      "platform": "web"
+    }
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build:host-types": "tsc -b tsconfig.host.json",
+    "build:host": "tsdown --config tsdown.host.config.ts",
+    "build:client-types": "tsc -b tsconfig.client.json",
+    "build:client": "tsdown --config tsdown.client.config.ts",
+    "build": "npm run clean && npm run build:host-types && npm run build:host && npm run build:client-types && npm run build:client",
+    "test:unit": "node --test packages/dsh-voice-input/test/*.test.mjs",
+    "verify:artifacts": "node scripts/verify-artifacts.mjs",
+    "test": "npm run build && npm run test:unit && npm run verify:artifacts",
+    "pack:plugin": "npm pack"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-api-remotes": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-model-selection": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-typert-protocol": "^0.1.0-rc.6",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "voice-input",
+    "dictation",
+    "speech-to-text"
+  ],
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-api-remotes": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-model-selection": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-invariants": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-typert-generator": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.6",
+    "@types/node": "^24.0.0",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "~18.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsdown": "0.22.14",
+    "typescript": "6.0.3",
+    "zod": "^4.4.3"
+  }
+}

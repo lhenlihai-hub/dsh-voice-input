@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@deepseek-ai/dsh-typert-protocol": [
+        "./packages/dsh-voice-input/src/typert-protocol-meta.d.ts"
+      ]
+    }
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/dsh-voice-input/tsconfig.node.json"
+    }
+  ]
+}

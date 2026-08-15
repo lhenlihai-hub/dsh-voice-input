@@ -1,0 +1,4 @@
+# Add the Host half. The package manifest declares and orders the browser half.
+- insert:
+    - id: voice-input
+      name: 'dsh-voice-input'
